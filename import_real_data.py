@@ -39,6 +39,25 @@ def field(df, *names):
         if norm(name) in cols: return cols[norm(name)]
     raise ValueError(f'Missing expected column {names}; available: {list(df.columns)}')
 
+def street_address(df):
+    """Support USDA split street fields and older combined-address exports."""
+    cols = {norm(c): c for c in df.columns}
+    def part(*names):
+        for name in names:
+            if norm(name) in cols:
+                return df[cols[norm(name)]].fillna('').astype(str).str.strip()
+        return pd.Series('', index=df.index, dtype=str)
+    combined_names = ('Store Street Address', 'Store Street', 'Street Address')
+    if any(norm(n) in cols for n in combined_names):
+        street = part(*combined_names)
+    else:
+        number = part('Street Number')
+        name = df[field(df, 'Street Name')].fillna('').astype(str).str.strip()
+        street = (number + ' ' + name).str.strip()
+    additional = part('Additional Address')
+    street = (street + ' ' + additional).str.strip()
+    return street.replace('', pd.NA)
+
 def csv_zip(path, member=None, **kwargs):
     with zipfile.ZipFile(path) as z:
         candidates = [n for n in z.namelist() if n.lower().endswith('.csv') and 'lookup' not in n.lower() and 'readme' not in n.lower()]
@@ -107,7 +126,7 @@ def import_sources(cache, output, db_path):
     end=pd.to_datetime(end_raw,errors='coerce',format='mixed')
     asof=pd.Timestamp('2025-12-31')
     snap=snap[(start<=asof)&(end_raw.isna()|end_raw.str.strip().eq('')|(end>=asof))]
-    snap_df=pd.DataFrame({'name':snap[field(snap,'Store Name')], 'street':snap[field(snap,'Store Street Address','Store Street','Street Address')], 'city':snap[field(snap,'City')], 'zip':snap[field(snap,'Zip Code','Zip')], 'kind':snap[field(snap,'Store Type')], 'latitude':snap[field(snap,'Latitude')], 'longitude':snap[field(snap,'Longitude')]})
+    snap_df=pd.DataFrame({'name':snap[field(snap,'Store Name')], 'street':street_address(snap), 'city':snap[field(snap,'City')], 'zip':snap[field(snap,'Zip Code','Zip')], 'kind':snap[field(snap,'Store Type')], 'latitude':snap[field(snap,'Latitude')], 'longitude':snap[field(snap,'Longitude')]})
     snap_df=snap_df.dropna(subset=['name','street','kind']).drop_duplicates(['name','street','city','latitude','longitude']).reset_index(drop=True)
     stores=locate(snap_df,tracts).copy().reset_index(drop=True)
     stores['store_id']=stores.index+1
