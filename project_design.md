@@ -36,8 +36,10 @@ Each table stores one type of entity or relationship. In the intended model, non
 | Q3: SNAP stores near transit by ZIP | Query 3 | expected fixture and injection tests |
 | Q4: county store mix | Query 4 | expected fixture results |
 | Q5: top N gap scores | Query 5 | expected fixture results |
-| Extra credit | Map & Charts | Streamlit smoke test defined |
-| Public-source ingestion | import_real_data.py | offline input-format fixture test; live sources not yet executed |
+| Extra credit | Map & Charts | Automated Streamlit page smoke tests passed |
+| Public-source ingestion | import_real_data.py | Offline regression tests and live import passed |
+
+Local verification on macOS, November 25, 2026: 34 automated tests passed in 2.90 seconds; real-source database generated and Streamlit started. Manual interaction and final grading-rubric review are separate checks.
 
 ## Access-gap score
 
