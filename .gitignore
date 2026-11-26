@@ -1,0 +1,8 @@
+__pycache__/
+.pytest_cache/
+.venv/
+venv/
+*.py[cod]
+.DS_Store
+foodmap.db
+foodmap.db-*
