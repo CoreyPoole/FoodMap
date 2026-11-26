@@ -3,7 +3,7 @@ import pytest
 import geopandas as gpd
 from shapely.geometry import box
 import zipfile
-from import_real_data import import_sources, TABLES
+from import_real_data import import_sources, TABLES, atlas_reference
 from db import get_conn
 
 @pytest.mark.parametrize('split_address', [False, True])
@@ -35,3 +35,18 @@ def test_offline_import(tmp_path, split_address):
         assert c.execute('SELECT address FROM Stores').fetchone()[0] == ('1 Main Suite A, Test, TX 78201' if split_address else '1 Main, Test, TX 78201')
         assert c.execute('PRAGMA integrity_check').fetchone()[0]=='ok'
         assert not c.execute('PRAGMA foreign_key_check').fetchall()
+
+def test_atlas_windows_encoding_and_multiple_tables(tmp_path):
+    path = tmp_path/'atlas.zip'
+    with zipfile.ZipFile(path,'w') as z:
+        z.writestr('SRAM General Tract Characteristics Data.csv',
+                   'CensusTract20,County\n48029000100,Bexar\n48091000100,Comal\n72001000100,Añasco\n'.encode('cp1252'))
+        z.writestr('SRAM Straight Line Distance Data.csv',
+                   'CensusTract20,County,SD_SRAM_Flag\n48029000100,Bexar,1\n48091000100,Comal,0\n')
+        z.writestr('SRAM Driving Distance Data.csv',
+                   'CensusTract20,DD_SRAM_Flag\n48029000100,0\n48091000100,1\n')
+    df = atlas_reference(path).sort_values('CensusTract20')
+    assert df['CensusTract20'].tolist() == ['48029000100','48091000100']
+    assert df['SD_SRAM_Flag'].tolist() == ['1','0']
+    assert df['DD_SRAM_Flag'].tolist() == ['0','1']
+    assert df['County'].tolist() == ['Bexar','Comal']
