@@ -1,25 +1,63 @@
 # FoodMap: A Food Access Tracker for Detecting Food Deserts
+CSCI 3304 Term Project (Data for Breaking Barriers) · Alexis Roel and Corey Poole
 
-CSCI 3304 Term Project (Data for Breaking Barriers) · Alexis Roel & Corey Poole
+FoodMap uses SQLite and Streamlit to identify possible food-access gaps caused by income, store availability and transportation barriers.
 
-FoodMap combines food retailer locations, transit stops, SNAP acceptance and neighborhood demographics in a SQLite database with a Streamlit interface.
-
-## Run locally
+## Start the application (macOS / Linux)
+Use Python 3.11 or 3.12.
 
 ```bash
-python3 -m pip install -r requirements.txt
-python3 -m streamlit run app.py
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m streamlit run app.py
 ```
 
-The application generates reproducible synthetic sample data and initializes the SQLite database on first launch. No actual USDA, ACS, GTFS or OpenStreetMap records have been imported. To reset the sample database, run `python3 load_data.py --regenerate`. To run tests, use `python3 -m pytest -q`.
+The default app builds a reproducible synthetic demonstration database on first launch. No Internet connection is needed after installing dependencies. This is a demonstration, not a real assessment.
 
-## Features
+## Real data: San Antonio-area counties
+The application includes a public-source importer for Bexar, Comal and Guadalupe counties, using the 2020–2024 ACS 5-year estimates, 2024 Census tract boundaries, 2020 ZCTA boundaries, USDA SNAP retailer authorization records as of December 31, 2025, VIA GTFS stops, and the 2025 USDA Food Access Research Atlas SRAM.
 
-- Five normalized relational tables with foreign keys and integrity checks.
-- Full CRUD for Areas and Stores.
-- Five parameterized analytical queries and CSV downloads.
-- Store and food-desert maps and access-gap charts.
+Read [VIA's developer license](https://www.viainfo.net/developers-license-agreement/) first. If you accept its terms, run:
 
-Walking distance is estimated using haversine distance times 1.3, not measured pedestrian routes. The food-desert candidates and access-gap scores are screening indicators, not official USDA classifications.
+```bash
+python import_real_data.py --accept-via-terms
+FOODMAP_DB=foodmap_real.db python -m streamlit run app.py
+```
 
-To use real data, replace the CSVs in `data/` with matching columns (see `generate_sample_data.py` and `load_data.py`), then run `python3 load_data.py`.
+The importer downloads source files to raw_data/, converts them into CSVs under real_data/, and builds foodmap_real.db and a source manifest. A Census API key is not required. Downloads can be large. If a provider changes or blocks its URL, obtain the corresponding official source file listed in import_real_data.py, save it under the matching filename in raw_data/, and rerun. Existing cached files are reused. A failed or incomplete import must not be treated as real data. The importer refuses to overwrite an existing database.
+
+See [data_sources.md](data_sources.md) for exact source definitions and limitations. Imported data covers SNAP retailers only. Fresh-produce availability is inferred from store type; ZIPs approximate tract locations. Walking distances are estimates. USDA atlas records are retained as a separate reference CSV rather than changing the five-table proposal schema. OpenStreetMap was optional and is not included. The pipeline was tested with representative local input fixtures, but the live downloads and browser UI could not be verified in the authoring environment.
+
+## Project requirements
+
+| Requirement | Implementation |
+|---|---|
+| Five normalized relational tables | schema.sql |
+| Full Stores and Areas CRUD | crud.py and Manage Data |
+| Low-income, low fresh-store density | Query 1 |
+| High no-vehicle rate with no walkable produce store | Query 2 |
+| SNAP stores near transit, filtered by area ZIP | Query 3 |
+| Store-type mix by county | Query 4 |
+| Top N access-gap areas | Query 5 |
+| Extra-credit maps and charts | Map & Charts |
+| Public-source processing | import_real_data.py |
+| ER diagram, normalization, demo sequence | [project_design.md](project_design.md) |
+
+All analytical queries use bound SQL parameters; the results can be exported as CSV. Stores and Areas support validated creation, search, editing and deletion. A store's walking links are recomputed when its coordinates change. A store deletion cascades to walking links; deleting an area with dependent stores or stops is restricted.
+
+## Test and reset
+
+```bash
+python -m pytest -q
+```
+
+The suite includes query tests, CRUD and integrity checks, an offline source-import integration test and smoke tests for every Streamlit page. Streamlit smoke tests require Streamlit to be installed.
+
+Reset the synthetic demo only (this replaces existing demo edits):
+
+```bash
+python load_data.py --regenerate
+```
+
+See [project_design.md](project_design.md) for the demonstration checklist. Do not submit synthetic results as factual findings. The final course rubric was not provided; confirm submission requirements beyond the approved proposal with the instructor.

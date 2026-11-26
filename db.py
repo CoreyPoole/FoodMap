@@ -14,6 +14,8 @@ def get_conn(path=None):
 def ensure_db(path=None):
     path = Path(path or DB_PATH)
     if not path.exists():
+        if path.resolve() != (BASE / "foodmap.db").resolve():
+            raise FileNotFoundError(f"Database {path} does not exist; run the real-data import first.")
         from generate_sample_data import generate
         from load_data import build_database
         data_dir = BASE / "data"

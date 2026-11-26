@@ -4,5 +4,9 @@ __pycache__/
 venv/
 *.py[cod]
 .DS_Store
-foodmap.db
-foodmap.db-*
+*.db
+*.db-*
+*.db.sources.json
+raw_data/
+real_data/
+data/
